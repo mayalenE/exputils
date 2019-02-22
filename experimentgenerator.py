@@ -106,9 +106,24 @@ def load_configuration_data_from_ods(ods_filepath):
             file_config[file_idx]['file_name_template'] = sheet_data[row_idx][file_borders[file_idx][0]]
 
         #######################################################
-        # fourth row: identify the variable names
+        # fourth row: identify the variable names and if there are repetitions and a experiment folder
         row_idx = 3
 
+        # find repetitions column
+        repetitions_info_col_idx = None
+        for col_idx in range(parameters_start_idx):
+            if sheet_data[row_idx][col_idx] is not None and sheet_data[row_idx][col_idx].lower() == 'repetitions':
+                repetitions_info_col_idx = col_idx
+                break
+
+        # find repetitions column
+        source_file_locations_col_idx = None
+        for col_idx in range(parameters_start_idx):
+            if sheet_data[row_idx][col_idx] is not None and sheet_data[row_idx][col_idx].lower() == 'experiment files':
+                source_file_locations_col_idx = col_idx
+                break
+
+        # find variable names
         for file_idx in range(len(file_config)):
 
             start_idx = file_borders[file_idx][0]
@@ -140,23 +155,40 @@ def load_configuration_data_from_ods(ods_filepath):
             experiment_id = int(sheet_data[row_idx][0])
 
             if experiment_id is not None:
-                experiments_data['experiments'][experiment_id] = copy.deepcopy(file_config)
+                experiments_data['experiments'][experiment_id] = dict()
+
+                experiments_data['experiments'][experiment_id]['files'] = copy.deepcopy(file_config)
+
+                # repetitions info if it exists
+                experiments_data['experiments'][experiment_id]['repetitions'] = None
+
+                if repetitions_info_col_idx is not None and sheet_data[row_idx][repetitions_info_col_idx] is not None:
+                    experiments_data['experiments'][experiment_id]['repetitions'] = int(sheet_data[row_idx][repetitions_info_col_idx])
 
                 for file_idx in range(len(file_config)):
 
                     col_idx = file_borders[file_idx][0]
 
-                    experiments_data['experiments'][experiment_id][file_idx]['variables'] = dict()
+                    experiments_data['experiments'][experiment_id]['files'][file_idx]['variables'] = dict()
 
                     for variable_name in variable_names[file_idx]:
 
-                        experiments_data['experiments'][experiment_id][file_idx]['variables'][variable_name] = sheet_data[row_idx][col_idx]
+                        experiments_data['experiments'][experiment_id]['files'][file_idx]['variables'][variable_name] = get_cell_data(sheet_data[row_idx][col_idx])
 
                         col_idx +=1
 
         config_data.append(experiments_data)
 
     return config_data
+
+
+def get_cell_data(data):
+
+    # replace strange characters that are not used for python strings
+    data = data.replace('’', '\'')
+    data = data.replace('`', '\'')
+
+    return data
 
 
 def generate_files_from_config(config_data, directory='.', extra_files=None):
@@ -196,34 +228,48 @@ def generate_files_from_config(config_data, directory='.', extra_files=None):
             os.makedirs(group_directory)
 
         # generate the experiment folders and files
-        for experiment_id, file_configs in experiment_group_config['experiments'].items():
+        for experiment_id, experiment_config in experiment_group_config['experiments'].items():
 
             experiment_directory = os.path.join(group_directory, 'experiment_{:06d}'.format(experiment_id))
 
-            # create the folder if not exists
-            if not os.path.isdir(experiment_directory):
-                os.mkdir(experiment_directory)
+            # create folders for the repetitions if necessary:
+            if experiment_config['repetitions'] is None:
+                num_of_repetitions = 1
+            else:
+                num_of_repetitions = experiment_config['repetitions']
 
-            # create the experiment folder if it does not exists
-            for file_config in file_configs:
+            for repetition_idx in range(num_of_repetitions):
 
-                # Read in the template file
-                with open(file_config['template_file_path'], 'r') as file:
-                    file_content = file.read()
+                # only create repetition folders if repetitions are specified
+                if experiment_config['repetitions'] is None:
+                    experiment_files_directory = experiment_directory
+                else:
+                    experiment_files_directory = os.path.join(experiment_directory, 'repetition_{:06d}'.format(repetition_idx))
 
-                # Replace the variables
-                file_content = file_content.replace('<experiment_id>', str(experiment_id))
-                for variable_name, variable_value in file_config['variables'].items():
-                    file_content = re.sub('<{}>'.format(variable_name),
-                                          variable_value,
-                                          file_content,
-                                          flags=re.IGNORECASE)
+                # create folder if not exists
+                if not os.path.isdir(experiment_files_directory):
+                    os.makedirs(experiment_files_directory)
 
-                # Write the final output file
-                file_path = os.path.join(experiment_directory, file_config['file_name_template'].format(experiment_id))
-                with open(file_path, 'w') as file:
-                    file.write(file_content)
+                for file_config in experiment_config['files']:
 
-            # copy extra files
-            for extra_file in extra_files:
-                shutil.copy2(extra_file, experiment_directory)
+                    # Read in the template file
+                    with open(file_config['template_file_path'], 'r') as file:
+                        file_content = file.read()
+
+                    # Replace the variables
+                    file_content = file_content.replace('<experiment_id>', str(experiment_id))
+                    file_content = file_content.replace('<repetition_id>', str(repetition_idx))
+                    for variable_name, variable_value in file_config['variables'].items():
+                        file_content = re.sub('<{}>'.format(variable_name),
+                                              variable_value,
+                                              file_content,
+                                              flags=re.IGNORECASE)
+
+                    # Write the final output file
+                    file_path = os.path.join(experiment_files_directory, file_config['file_name_template'].format(experiment_id))
+                    with open(file_path, 'w') as file:
+                        file.write(file_content)
+
+                # copy extra files
+                for extra_file in extra_files:
+                    shutil.copy2(extra_file, experiment_files_directory)
