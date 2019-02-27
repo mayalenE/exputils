@@ -5,7 +5,7 @@ import shutil
 from exputils.odsreader import ODSReader
 from collections import OrderedDict
 
-def generate_experiment_files(ods_filepath, directory=None, extra_files=None):
+def generate_experiment_files(ods_filepath, directory=None, extra_files=None, verbose=False):
     '''
     Generates experiment files and configurations based on entries in a ODS file (LibreOffice Spreadsheet).
 
@@ -25,10 +25,16 @@ def generate_experiment_files(ods_filepath, directory=None, extra_files=None):
     if directory == '':
         directory = '.'
 
+    if verbose:
+        print('Load config from {!r} ...'.format(ods_filepath))
+
     config_data = load_configuration_data_from_ods(ods_filepath)
 
     # generate experiment files based on the loaded configurations
-    generate_files_from_config(config_data, directory, extra_files=extra_files)
+    if verbose:
+        print('Generate experiments ...'.format(ods_filepath))
+
+    generate_files_from_config(config_data, directory, extra_files=extra_files, verbose=verbose)
 
 
 def load_configuration_data_from_ods(ods_filepath):
@@ -119,7 +125,7 @@ def load_configuration_data_from_ods(ods_filepath):
         # find repetitions column
         source_file_locations_col_idx = None
         for col_idx in range(parameters_start_idx):
-            if sheet_data[row_idx][col_idx] is not None and sheet_data[row_idx][col_idx].lower() == 'experiment files':
+            if sheet_data[row_idx][col_idx] is not None and sheet_data[row_idx][col_idx].lower() == 'files':
                 source_file_locations_col_idx = col_idx
                 break
 
@@ -160,10 +166,15 @@ def load_configuration_data_from_ods(ods_filepath):
                 experiments_data['experiments'][experiment_id]['files'] = copy.deepcopy(file_config)
 
                 # repetitions info if it exists
-                experiments_data['experiments'][experiment_id]['repetitions'] = None
-
                 if repetitions_info_col_idx is not None and sheet_data[row_idx][repetitions_info_col_idx] is not None:
                     experiments_data['experiments'][experiment_id]['repetitions'] = int(sheet_data[row_idx][repetitions_info_col_idx])
+                else:
+                    experiments_data['experiments'][experiment_id]['repetitions'] = None
+
+                if source_file_locations_col_idx is not None and sheet_data[row_idx][source_file_locations_col_idx] is not None:
+                    experiments_data['experiments'][experiment_id]['source_file_locations'] = [i.strip() for i in sheet_data[row_idx][source_file_locations_col_idx].split(',')]
+                else:
+                    experiments_data['experiments'][experiment_id]['source_file_locations'] = None
 
                 for file_idx in range(len(file_config)):
 
@@ -191,7 +202,7 @@ def get_cell_data(data):
     return data
 
 
-def generate_files_from_config(config_data, directory='.', extra_files=None):
+def generate_files_from_config(config_data, directory='.', extra_files=None, verbose=False):
     '''
 
     Format of configuration data:
@@ -250,10 +261,28 @@ def generate_files_from_config(config_data, directory='.', extra_files=None):
                 if not os.path.isdir(experiment_files_directory):
                     os.makedirs(experiment_files_directory)
 
+                # get list of all additional source files
+                if experiment_config['source_file_locations'] is None:
+                    source_files = extra_files
+                else:
+                    source_files = experiment_config['source_file_locations'] + extra_files
+
+                # create the source files that are given by templates
                 for file_config in experiment_config['files']:
 
+                    # check if the given file exists, otherwise it might be in one of the given directories under the source-files property of the experiment
+                    template_file_path = None
+                    if os.path.isfile(file_config['template_file_path']):
+                        template_file_path = file_config['template_file_path']
+                    else:
+                        for src in source_files:
+                            if os.path.isdir(src):
+                                if os.path.isfile(os.path.join(src, file_config['template_file_path'])):
+                                    template_file_path = os.path.join(src, file_config['template_file_path'])
+                                    break
+
                     # Read in the template file
-                    with open(file_config['template_file_path'], 'r') as file:
+                    with open(template_file_path, 'r') as file:
                         file_content = file.read()
 
                     # Replace the variables
@@ -270,6 +299,42 @@ def generate_files_from_config(config_data, directory='.', extra_files=None):
                     with open(file_path, 'w') as file:
                         file.write(file_content)
 
-                # copy extra files
-                for extra_file in extra_files:
-                    shutil.copy2(extra_file, experiment_files_directory)
+                # copy all other sources, but not the templates if they are in one of the source directories
+                template_files = [file_config['template_file_path'] for file_config in experiment_config['files']]
+
+                for src in source_files:
+                    copy_experiment_files(src, experiment_files_directory, template_files)
+
+
+def copy_experiment_files(src, dst, template_files):
+
+    if os.path.isdir(src):
+        # if directory, then copy the content
+
+        for item in os.listdir(src):
+            s = os.path.join(src, item)
+
+            # if subdirectory, then delete any existing directory and make a new directory
+
+            if os.path.isdir(s):
+
+                d = os.path.join(dst, item)
+
+                if os.path.isdir(d):
+                    shutil.rmtree(d, ignore_errors=True)
+
+                os.mkdir(d)
+
+            else:
+                d = dst
+
+            copy_experiment_files(s, d, template_files)
+
+    else:
+        # if file, then copy it directly
+
+        if os.path.basename(src) not in [os.path.basename(f) for f in template_files]:
+            shutil.copy2(src, dst)
+
+
+
