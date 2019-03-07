@@ -80,10 +80,12 @@ def calc_experiment_statistics(statistics, load_experiment_data_func,  *args, st
         for statistic_name, statistic_func in statistics:
 
             # calculate statistics if they do not exist
-            filename = '{}.npy'.format(statistic_name)
+            filename_npy = '{}.npy'.format(statistic_name)
+            filename_npz = '{}.npz'.format(statistic_name)
 
-            filepath = os.path.join(directory, filename)
-            if not os.path.isfile(filepath) or recalculate_statistics:
+            filepath_npy = os.path.join(directory, filename_npy)
+            filepath_npz = os.path.join(directory, filename_npz)
+            if (not os.path.isfile(filepath_npy) and not os.path.isfile(filepath_npz)) or recalculate_statistics:
 
                 if verbose:
                     print('\t{} ...'.format(statistic_name))
@@ -92,4 +94,7 @@ def calc_experiment_statistics(statistics, load_experiment_data_func,  *args, st
 
                 stat = statistic_func(data)
 
-                np.save(filepath, stat)
+                if isinstance(stat, dict):
+                    np.savez(filepath_npz, **stat)
+                else:
+                    np.save(filepath_npy, stat)
