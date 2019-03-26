@@ -39,7 +39,7 @@ def calc_experiment_statistics(statistics, load_experiment_data_func,  *args, st
         directory_name = os.path.basename(os.path.dirname(basedir))
 
         # look if directory itself is a repetition experiment
-        if directory_name.find('repetition_') and os.path.isdir(basedir):
+        if directory_name.find('repetition_') >=0 and os.path.isdir(basedir):
             found_folders.append(basedir)
 
         # look if there are repetition folders somewhere inside the directory
@@ -50,7 +50,7 @@ def calc_experiment_statistics(statistics, load_experiment_data_func,  *args, st
 
         # if there are no repetitions, then search for experiment folder
         if not found_folders:
-            if directory_name.find('experiment_') and os.path.isdir(basedir):
+            if directory_name.find('experiment_') >= 0 and os.path.isdir(basedir):
                 found_folders.append(basedir)
 
         if not found_folders:

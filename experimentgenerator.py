@@ -158,9 +158,11 @@ def load_configuration_data_from_ods(ods_filepath):
 
         for row_idx in range(4, len(sheet_data)):
 
-            experiment_id = int(sheet_data[row_idx][0])
+            experiment_id = sheet_data[row_idx][0]
 
             if experiment_id is not None:
+                experiment_id = int(experiment_id)
+
                 experiments_data['experiments'][experiment_id] = dict()
 
                 experiments_data['experiments'][experiment_id]['files'] = copy.deepcopy(file_config)

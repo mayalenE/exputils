@@ -1,18 +1,31 @@
 import glob
 import os
 import subprocess
+import time
 
-def start_slurm_experiments(directory='.', is_parallel=True, verbose=False):
+def start_slurm_experiments(directory='.', start_scripts='*.slurm', is_parallel=True, verbose=False, post_start_wait_time=0):
 
     return start_experiments(directory=directory,
-                             start_scripts='*.slurm',
+                             start_scripts=start_scripts,
                              start_command='sbatch {}',
                              is_parallel=is_parallel,
                              is_chdir = True, # added, otherwise the sbatch does not work
-                             verbose=verbose)
+                             verbose=verbose,
+                             post_start_wait_time=post_start_wait_time)
 
 
-def start_experiments(directory='.', start_scripts='*.sh', start_command='{}', is_parallel=True, is_chdir=False, verbose=False):
+def start_torque_experiments(directory='.', start_scripts='*.torque', is_parallel=True, verbose=False, post_start_wait_time=0):
+
+    return start_experiments(directory=directory,
+                             start_scripts=start_scripts,
+                             start_command='qsub {}',
+                             is_parallel=is_parallel,
+                             is_chdir = True, # added, otherwise the sbatch does not work
+                             verbose=verbose,
+                             post_start_wait_time=post_start_wait_time)
+
+
+def start_experiments(directory='.', start_scripts='*.sh', start_command='{}', is_parallel=True, is_chdir=False, verbose=False, post_start_wait_time=0):
 
     # holds tuples of (startscript_path, status)
     scripts = []
@@ -64,6 +77,9 @@ def start_experiments(directory='.', start_scripts='*.sh', start_command='{}', i
             # if not parallel, then wait until current process is finished
             if not is_parallel:
                 process.wait()
+
+            if post_start_wait_time > 0:
+                time.sleep(post_start_wait_time)
 
             processes.append(process)
 
