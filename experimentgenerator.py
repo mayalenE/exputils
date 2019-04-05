@@ -5,7 +5,7 @@ import shutil
 from exputils.odsreader import ODSReader
 from collections import OrderedDict
 
-def generate_experiment_files(ods_filepath, directory=None, extra_files=None, verbose=False):
+def generate_experiment_files(ods_filepath, directory=None, extra_files=None, extra_experiment_files=None, verbose=False):
     '''
     Generates experiment files and configurations based on entries in a ODS file (LibreOffice Spreadsheet).
 
@@ -34,7 +34,7 @@ def generate_experiment_files(ods_filepath, directory=None, extra_files=None, ve
     if verbose:
         print('Generate experiments ...'.format(ods_filepath))
 
-    generate_files_from_config(config_data, directory, extra_files=extra_files, verbose=verbose)
+    generate_files_from_config(config_data, directory, extra_files=extra_files, extra_experiment_files=extra_experiment_files, verbose=verbose)
 
 
 def load_configuration_data_from_ods(ods_filepath):
@@ -122,11 +122,18 @@ def load_configuration_data_from_ods(ods_filepath):
                 repetitions_info_col_idx = col_idx
                 break
 
-        # find repetitions column
-        source_file_locations_col_idx = None
+        # find column with sources for repetitions
+        repetition_source_file_locations_col_idx = None
         for col_idx in range(parameters_start_idx):
-            if sheet_data[row_idx][col_idx] is not None and sheet_data[row_idx][col_idx].lower() == 'files':
-                source_file_locations_col_idx = col_idx
+            if sheet_data[row_idx][col_idx] is not None and (sheet_data[row_idx][col_idx].lower() == 'files' or sheet_data[row_idx][col_idx].lower() == 'repetition files'):
+                repetition_source_file_locations_col_idx = col_idx
+                break
+
+        # find column with sources for experiments
+        experiment_source_file_locations_col_idx = None
+        for col_idx in range(parameters_start_idx):
+            if sheet_data[row_idx][col_idx] is not None and sheet_data[row_idx][col_idx].lower() == 'experiment files':
+                experiment_source_file_locations_col_idx = col_idx
                 break
 
         # find variable names
@@ -173,10 +180,15 @@ def load_configuration_data_from_ods(ods_filepath):
                 else:
                     experiments_data['experiments'][experiment_id]['repetitions'] = None
 
-                if source_file_locations_col_idx is not None and sheet_data[row_idx][source_file_locations_col_idx] is not None:
-                    experiments_data['experiments'][experiment_id]['source_file_locations'] = [i.strip() for i in sheet_data[row_idx][source_file_locations_col_idx].split(',')]
+                if repetition_source_file_locations_col_idx is not None and sheet_data[row_idx][repetition_source_file_locations_col_idx] is not None:
+                    experiments_data['experiments'][experiment_id]['repetition_source_file_locations'] = [i.strip() for i in sheet_data[row_idx][repetition_source_file_locations_col_idx].split(',')]
                 else:
-                    experiments_data['experiments'][experiment_id]['source_file_locations'] = None
+                    experiments_data['experiments'][experiment_id]['repetition_source_file_locations'] = None
+
+                if experiment_source_file_locations_col_idx is not None and sheet_data[row_idx][experiment_source_file_locations_col_idx] is not None:
+                    experiments_data['experiments'][experiment_id]['experiment_source_file_locations'] = [i.strip() for i in sheet_data[row_idx][experiment_source_file_locations_col_idx].split(',')]
+                else:
+                    experiments_data['experiments'][experiment_id]['experiment_source_file_locations'] = None
 
                 for file_idx in range(len(file_config)):
 
@@ -204,7 +216,7 @@ def get_cell_data(data):
     return data
 
 
-def generate_files_from_config(config_data, directory='.', extra_files=None, verbose=False):
+def generate_files_from_config(config_data, directory='.', extra_files=None, extra_experiment_files=None, verbose=False):
     '''
 
     Format of configuration data:
@@ -227,6 +239,11 @@ def generate_files_from_config(config_data, directory='.', extra_files=None, ver
         extra_files = []
     elif not isinstance(extra_files, list):
         extra_files = [extra_files]
+
+    if extra_experiment_files is None:
+        extra_experiment_files = []
+    elif not isinstance(extra_experiment_files, list):
+        extra_experiment_files = [extra_experiment_files]
 
     for experiment_group_config in config_data:
 
@@ -251,61 +268,80 @@ def generate_files_from_config(config_data, directory='.', extra_files=None, ver
             else:
                 num_of_repetitions = experiment_config['repetitions']
 
-            for repetition_idx in range(num_of_repetitions):
+            for repetition_id in range(num_of_repetitions):
 
                 # only create repetition folders if repetitions are specified
                 if experiment_config['repetitions'] is None:
                     experiment_files_directory = experiment_directory
                 else:
-                    experiment_files_directory = os.path.join(experiment_directory, 'repetition_{:06d}'.format(repetition_idx))
+                    experiment_files_directory = os.path.join(experiment_directory, 'repetition_{:06d}'.format(repetition_id))
 
                 # create folder if not exists
                 if not os.path.isdir(experiment_files_directory):
                     os.makedirs(experiment_files_directory)
 
-                # get list of all additional source files
-                if experiment_config['source_file_locations'] is None:
+                # generate the files for the experiment, or the repetition if they are defined
+                if experiment_config['repetition_source_file_locations'] is None:
                     source_files = extra_files
                 else:
-                    source_files = experiment_config['source_file_locations'] + extra_files
+                    source_files = experiment_config['repetition_source_file_locations'] + extra_files
 
-                # create the source files that are given by templates
-                for file_config in experiment_config['files']:
+                generate_source_files(source_files, experiment_files_directory, experiment_config, experiment_id, repetition_id)
 
-                    # check if the given file exists, otherwise it might be in one of the given directories under the source-files property of the experiment
-                    template_file_path = None
-                    if os.path.isfile(file_config['template_file_path']):
-                        template_file_path = file_config['template_file_path']
-                    else:
-                        for src in source_files:
-                            if os.path.isdir(src):
-                                if os.path.isfile(os.path.join(src, file_config['template_file_path'])):
-                                    template_file_path = os.path.join(src, file_config['template_file_path'])
-                                    break
+            # if there are experiment - repetitions defined, then generate the files for the experiment folder
+            if experiment_config['experiment_source_file_locations'] is None:
+                source_files = extra_experiment_files
+            else:
+                source_files = experiment_config['experiment_source_file_locations'] + extra_experiment_files
 
-                    # Read in the template file
-                    with open(template_file_path, 'r') as file:
-                        file_content = file.read()
+            if source_files:
+                generate_source_files(source_files, experiment_directory, experiment_config, experiment_id)
 
-                    # Replace the variables
-                    file_content = file_content.replace('<experiment_id>', str(experiment_id))
-                    file_content = file_content.replace('<repetition_id>', str(repetition_idx))
-                    for variable_name, variable_value in file_config['variables'].items():
-                        file_content = re.sub('<{}>'.format(variable_name),
-                                              variable_value,
-                                              file_content,
-                                              flags=re.IGNORECASE)
 
-                    # Write the final output file
-                    file_path = os.path.join(experiment_files_directory, file_config['file_name_template'].format(experiment_id))
-                    with open(file_path, 'w') as file:
-                        file.write(file_content)
+def generate_source_files(source_files, experiment_files_directory, experiment_config, experiment_id, repetition_id=None):
 
-                # copy all other sources, but not the templates if they are in one of the source directories
-                template_files = [file_config['template_file_path'] for file_config in experiment_config['files']]
+    # create the source files that are given by templates
+    for file_config in experiment_config['files']:
 
-                for src in source_files:
-                    copy_experiment_files(src, experiment_files_directory, template_files)
+        # check if the given file exists, otherwise it might be in one of the given directories under the source-files property of the experiment
+        template_file_path = None
+        if os.path.isfile(file_config['template_file_path']):
+            template_file_path = file_config['template_file_path']
+        else:
+            for src in source_files:
+                if os.path.isdir(src):
+                    if os.path.isfile(os.path.join(src, file_config['template_file_path'])):
+                        template_file_path = os.path.join(src, file_config['template_file_path'])
+                        break
+
+        if template_file_path is not None:
+
+            # Read in the template file
+            with open(template_file_path, 'r') as file:
+                file_content = file.read()
+
+            # Replace the variables
+            file_content = file_content.replace('<experiment_id>', str(experiment_id))
+
+            if repetition_id is not None:
+                file_content = file_content.replace('<repetition_id>', str(repetition_id))
+
+            for variable_name, variable_value in file_config['variables'].items():
+                file_content = re.sub('<{}>'.format(variable_name),
+                                      variable_value,
+                                      file_content,
+                                      flags=re.IGNORECASE)
+
+            # Write the final output file
+            file_path = os.path.join(experiment_files_directory, file_config['file_name_template'].format(experiment_id))
+            with open(file_path, 'w') as file:
+                file.write(file_content)
+
+    # copy all other sources, but not the templates if they are in one of the source directories
+    template_files = [file_config['template_file_path'] for file_config in experiment_config['files']]
+
+    for src in source_files:
+        copy_experiment_files(src, experiment_files_directory, template_files)
 
 
 def copy_experiment_files(src, dst, template_files):
@@ -335,6 +371,7 @@ def copy_experiment_files(src, dst, template_files):
     else:
         # if file, then copy it directly
 
+        # do not copy the template files, because they were already processed
         if os.path.basename(src) not in [os.path.basename(f) for f in template_files]:
             shutil.copy2(src, dst)
 

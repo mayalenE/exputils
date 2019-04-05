@@ -250,3 +250,77 @@ def test_generate_experiments(tmpdir):
     with open(os.path.join(directory, 'group_02', 'experiment_000003', 'file_04'), 'r') as file:
         file_content = file.read()
     assert '\'blubb\'\n' == file_content
+
+
+
+    ################################################
+    # test 6 - source files for experiments and for repetitions
+
+    directory = os.path.join(tmpdir.strpath, 'test06')
+
+    exputils.generate_experiment_files(os.path.join(dir_path, 'test_06.ods'), directory=directory, extra_files=[os.path.join(dir_path, 'extra_file_01')], extra_experiment_files=[os.path.join(dir_path, 'extra_file_02')])
+
+    # files
+
+    # group 01
+    # repetition files
+    assert os.path.isfile(os.path.join(directory, 'group_01', 'experiment_000001', 'repetition_000000', 'file_03'))
+    assert os.path.isfile(os.path.join(directory, 'group_01', 'experiment_000001', 'repetition_000000', 'file_04'))
+    assert os.path.isfile(os.path.join(directory, 'group_01', 'experiment_000001', 'repetition_000000', 'extra_file_01'))
+
+    assert os.path.isfile(os.path.join(directory, 'group_01', 'experiment_000001', 'repetition_000001', 'file_03'))
+    assert os.path.isfile(os.path.join(directory, 'group_01', 'experiment_000001', 'repetition_000001', 'file_04'))
+    assert os.path.isfile(os.path.join(directory, 'group_01', 'experiment_000001', 'repetition_000001', 'extra_file_01'))
+
+    assert os.path.isfile(os.path.join(directory, 'group_01', 'experiment_000003', 'repetition_000000', 'file_03'))
+    assert os.path.isfile(os.path.join(directory, 'group_01', 'experiment_000003', 'repetition_000000', 'file_04'))
+    assert os.path.isfile(os.path.join(directory, 'group_01', 'experiment_000003', 'repetition_000000', 'extra_file_01'))
+
+    # experiment files
+    assert os.path.isfile(os.path.join(directory, 'group_01', 'experiment_000003', 'file_05'))
+    assert os.path.isfile(os.path.join(directory, 'group_01', 'experiment_000003', 'file_06'))
+    assert os.path.isfile(os.path.join(directory, 'group_01', 'experiment_000003', 'extra_file_02'))
+
+    # group 02
+    # repetition directories
+    assert os.path.isdir(os.path.join(directory, 'group_02', 'experiment_000001', 'repetition_000000'))
+    assert os.path.isdir(os.path.join(directory, 'group_02', 'experiment_000001', 'repetition_000001'))
+    assert os.path.isdir(os.path.join(directory, 'group_02', 'experiment_000003', 'repetition_000000'))
+
+    # experiment files
+    assert os.path.isfile(os.path.join(directory, 'group_02', 'experiment_000003', 'file_05'))
+    assert os.path.isfile(os.path.join(directory, 'group_02', 'experiment_000003', 'file_06'))
+    assert os.path.isfile(os.path.join(directory, 'group_02', 'experiment_000003', 'extra_file_02'))
+
+
+    # file content
+    with open(os.path.join(directory, 'group_01', 'experiment_000001', 'repetition_000000', 'file_04'), 'r') as file:
+        file_content = file.read()
+    assert '\'bla\'\n' == file_content
+
+    with open(os.path.join(directory, 'group_01', 'experiment_000001', 'repetition_000001', 'file_04'), 'r') as file:
+        file_content = file.read()
+    assert '\'bla\'\n' == file_content
+
+    with open(os.path.join(directory, 'group_01', 'experiment_000001', 'file_05'), 'r') as file:
+        file_content = file.read()
+    assert '\'bla2\'\n' == file_content
+
+
+    with open(os.path.join(directory, 'group_01', 'experiment_000003', 'repetition_000000', 'file_04'), 'r') as file:
+        file_content = file.read()
+    assert '\'blubb\'\n' == file_content
+
+    with open(os.path.join(directory, 'group_01', 'experiment_000003', 'file_05'), 'r') as file:
+        file_content = file.read()
+    assert '\'blubb2\'\n' == file_content
+
+
+    with open(os.path.join(directory, 'group_02', 'experiment_000001', 'file_05'), 'r') as file:
+        file_content = file.read()
+    assert '\'bla2\'\n' == file_content
+
+    with open(os.path.join(directory, 'group_02', 'experiment_000003', 'file_05'), 'r') as file:
+        file_content = file.read()
+    assert '\'blubb2\'\n' == file_content
+
