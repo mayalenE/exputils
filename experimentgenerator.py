@@ -209,6 +209,9 @@ def load_configuration_data_from_ods(ods_filepath):
 
 def get_cell_data(data):
 
+    if data is None:
+        data = ''
+
     # replace strange characters that are not used for python strings
     data = data.replace('’', '\'')
     data = data.replace('`', '\'')

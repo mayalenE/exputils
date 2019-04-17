@@ -27,6 +27,8 @@ def start_torque_experiments(directory='.', start_scripts='*.torque', is_paralle
 
 def start_experiments(directory='.', start_scripts='*.sh', start_command='{}', is_parallel=True, is_chdir=False, verbose=False, post_start_wait_time=0):
 
+    # TODO: do not restart experiments that have been added as jobs but have not been started yet
+
     # holds tuples of (startscript_path, status)
     scripts = []
 
