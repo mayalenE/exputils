@@ -1,6 +1,7 @@
 import numpy as np
 import os
 import glob
+import zipfile
 
 def calc_experiment_statistics(statistics, load_experiment_data_func,  *args, statistics_directory='statistics', recalculate_statistics=False, verbose=False):
     '''
@@ -77,27 +78,65 @@ def calc_experiment_statistics(statistics, load_experiment_data_func,  *args, st
         if verbose:
             print('Calculate statistics for {!r}:'.format(experiment_folder))
 
-        for statistic_name, statistic_func in statistics:
+        for statistic_definition in statistics:
+
+            if isinstance(statistic_definition, tuple):
+                statistic_name = statistic_definition[0]
+                statistic_func = statistic_definition[1]
+                statistic_type = statistic_definition[2] if len(statistic_definition) > 2 else 'numpy'
+            elif isinstance(statistic_definition, dict):
+                statistic_name = statistic_definition['name']
+                statistic_func = statistic_definition['function']
+                statistic_type = statistic_definition['type'] if 'type' in statistic_definition else 'numpy'
+            else:
+                raise ValueError('Unknown format for statistic definition {!r}!'.format(statistic_definition))
 
             # calculate statistics if they do not exist
-            filename_npy = '{}.npy'.format(statistic_name)
-            filename_npz = '{}.npz'.format(statistic_name)
+            filepath_npy = os.path.join(directory, '{}.npy'.format(statistic_name))
+            filepath_npz = os.path.join(directory, '{}.npz'.format(statistic_name))
+            filepath_zip = os.path.join(directory, '{}.zip'.format(statistic_name))
+            directory_path = os.path.join(directory, statistic_name)
 
-            filepath_npy = os.path.join(directory, filename_npy)
-            filepath_npz = os.path.join(directory, filename_npz)
-            if (not os.path.isfile(filepath_npy) and not os.path.isfile(filepath_npz)) or recalculate_statistics:
+            if (not os.path.isfile(filepath_npy) and not os.path.isfile(filepath_npz) and not os.path.isfile(filepath_zip) and not os.path.isdir(directory_path)) or recalculate_statistics:
 
                 if verbose:
                     print('\t{} ...'.format(statistic_name))
 
                 data = get_data(data, experiment_folder)
 
-                stat = statistic_func(data)
+                if statistic_type == 'numpy':
+                    stat = statistic_func(data)
 
-                if isinstance(stat, dict):
-                    np.savez(filepath_npz, **stat)
+                    if isinstance(stat, dict):
+                        np.savez(filepath_npz, **stat)
+                    else:
+                        np.save(filepath_npy, stat)
+
+                elif statistic_type == 'zip':
+
+                    stat = statistic_func(data)
+
+                    if not isinstance(stat, dict):
+                        raise ValueError('Only dictionaries are accepted as data type for zip statistics!')
+
+                    zf = zipfile.ZipFile(filepath_zip,
+                                         mode='w',
+                                         compression=zipfile.ZIP_DEFLATED,
+                                         )
+                    try:
+                        for sub_stat_name, sub_stat in stat.items():
+                            zf.writestr(sub_stat_name, sub_stat)
+
+                    finally:
+                        zf.close()
+
+                elif statistic_type == 'directory':
+                    if not os.path.isdir(directory_path):
+                        os.mkdir(directory_path)
+                    statistic_func(data, directory_path)
+
                 else:
-                    np.save(filepath_npy, stat)
+                    ValueError('Unknown statistic type {!r}!'.format(statistic_type))
 
 
 
