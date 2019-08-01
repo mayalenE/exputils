@@ -1,3 +1,6 @@
+# Code from https://github.com/marcoconti83/read-ods-with-odfpy
+# FILE: ODSReader.py
+
 # Copyright 2011 Marco Conti
 
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -11,6 +14,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+# NOTICE OF CHANGES:
+#  - removed getSheet method
+#  - renamed ODSReader.SHEETS to ODSReader.sheets
+#  - read out c.data instead of n.data in line 82
 
 # Thanks to grt for the fixes
 
