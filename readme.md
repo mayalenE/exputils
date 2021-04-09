@@ -29,10 +29,6 @@ Experiments are stored in a specific folder structure which allows to save and l
 Please note that  it represents a default structure which can be adapted if required.
 Elements in brackets (\<custom name>\) can have custom names.   
 Folder structure:
-      
-        <path_to_packages_folder>/ 
-        ├── <other packages of yours>
-        └── exputils  
 
         <experimental campaign>/  
         ├── analyze                                 # Scripts such as Jupyter notebooks to analyze the different experiments in this experimental campaign.  
