@@ -19,6 +19,7 @@ The original repository can be found in the flowersteam repository [exputils](ht
 `git clone git@github.com:mayalenE/exputils.git`  
 2. Install the dependencies in your python environment:
 `conda install -c conda-forge odfpy`
+`conda install -c anaconda numpy`
 4. [Recommended to call exputils from any location on your computer]: Add the path to exputils package in your python environment
 `echo <path_to_packages_folder> "$HOME/miniconda3/envs/<conda_env>/lib/python3.6/site-packages/my_packages.pth"`
 
