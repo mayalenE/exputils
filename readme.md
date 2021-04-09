@@ -34,7 +34,7 @@ Folder structure:
         ├── analyze                                 # Scripts such as Jupyter notebooks to analyze the different experiments in this experimental campaign.  
         ├── experiment_configurations.ods           # ODS file that contains the configuration parameters of the different experiments in this campaign.  
         ├── code                                    # Holds code templates of the experiments.  
-        │   ├── <repetition code>                   # Code templates that are used under the repetition folders of th experiments. These contain the acutal experimental code that should be run.  
+        │   ├── <repetition code>                   # Code templates that are used under the repetition folders of the experiments. These contain the experimental code that should be run.  
         │   ├── <experiment code>                   # Code templates that are used under the experiment folder of the experiment. These contain usually code to compute statistics over all repetitions of an experiment.  
         ├── generate_code.sh                        # Script file that generates the experimental code under the experiments folder using the configuration in the experiment_configurations.ods file and the code under the code folder.          
         ├── experiments folder                      # Contains generated code for experiments and the collected experimental data.
