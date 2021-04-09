@@ -41,9 +41,9 @@ Folder structure:
         │   ├── experiment_{id}
         |   │    ├── repetition_{id}
         │   │    │    ├── data                      # Experimental data for the single repetitions, such as logs.
-        │   │    │    └── code                      # Generated code and resource files.
+        │   │    │    └── <code scripts>                    # Generated code and resource files.
         |   │    ├── data                           # Experimental data for the whole experiment, e.g. statistics that are calculated over all repetitions.   
-        |   │    └── <code>                         # Generated code and resource files.  
+        |   │    └── <code scripts>                         # Generated code and resource files.  
         └── <run scripts>.sh                        # Various shell scripts to run experiments and calculate statistics locally or on clusters.
 
 
